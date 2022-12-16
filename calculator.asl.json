@@ -1,0 +1,236 @@
+{
+  "Comment": "A StepFunction that can Add, Subtract, Divide and multiply two numbers together.",
+  "TimeoutSeconds": 10,
+  "StartAt": "Validate x,y",
+  "States": {
+    "Validate x,y": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "And": [
+            {
+              "Or": [
+                {
+                  "Variable": "$.x",
+                  "IsPresent": true
+                },
+                {
+                  "Variable": "$.y",
+                  "IsPresent": true
+                }
+              ]
+            },
+            {
+              "And": [
+                {
+                  "Variable": "$.x",
+                  "IsNumeric": true
+                },
+                {
+                  "Variable": "$.y",
+                  "IsNumeric": true
+                }
+              ]
+            },
+            {
+              "And": [
+                {
+                  "Variable": "$.x",
+                  "NumericGreaterThanEquals": 0
+                },
+                {
+                  "Variable": "$.y",
+                  "NumericGreaterThanEquals": 0
+                }
+              ]
+            }
+          ],
+          "Comment": "X and Y are present and numberic",
+          "Next": "Switch operation"
+        }
+      ],
+      "Default": "Invalid Input",
+      "Comment": "Validate X and Y"
+    },
+    "Invalid Input": {
+      "Type": "Fail"
+    },
+    "Switch operation": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Variable": "$.operation",
+          "StringEquals": "+",
+          "Comment": "Add",
+          "Next": "Add"
+        },
+        {
+          "Variable": "$.operation",
+          "StringEquals": "-",
+          "Comment": "subtract",
+          "Next": "Subtract"
+        },
+        {
+          "Variable": "$.operation",
+          "StringEquals": "*",
+          "Comment": "multiply",
+          "Next": "Is X > Y"
+        },
+        {
+          "Variable": "$.operation",
+          "StringEquals": "÷",
+          "Comment": "divide",
+          "Next": "Init /"
+        }
+      ],
+      "Default": "Invalid Input",
+      "Comment": "Choose operation"
+    },
+    "Is X > Y": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Variable": "$.x",
+          "NumericGreaterThanEqualsPath": "$.y",
+          "Next": "Switch to reduce loops"
+        }
+      ],
+      "Default": "Init *"
+    },
+    "Switch to reduce loops": {
+      "Type": "Pass",
+      "Next": "Init *",
+      "Parameters": {
+        "x.$": "$.y",
+        "y.$": "$.x"
+      }
+    },
+    "Init /": {
+      "Type": "Pass",
+      "Parameters": {
+        "x.$": "$.x",
+        "y.$": "$.y",
+        "result": 0,
+        "i": 0
+      },
+      "Next": "i = x /"
+    },
+    "Add y /": {
+      "Type": "Pass",
+      "Next": "Add 1 to i /",
+      "Parameters": {
+        "x.$": "$.x",
+        "y.$": "$.y",
+        "result.$": "States.MathAdd($.result, $.y)",
+        "i.$": "$.i"
+      }
+    },
+    "Add 1 to i /": {
+      "Type": "Pass",
+      "Next": "i = x /",
+      "Parameters": {
+        "x.$": "$.x",
+        "y.$": "$.y",
+        "result.$": "$.result",
+        "i.$": "States.MathAdd(1,$.i)"
+      }
+    },
+    "i = x /": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Variable": "$.result",
+          "NumericGreaterThanEqualsPath": "$.x",
+          "Next": "Division Result"
+        },
+        {
+          "Variable": "$.y",
+          "NumericEquals": 0,
+          "Comment": "Division by zero",
+          "Next": "Division by zero"
+        }
+      ],
+      "Default": "Add y /"
+    },
+    "Division Result": {
+      "Type": "Pass",
+      "End": true,
+      "Parameters": {
+        "result.$": "$.i"
+      }
+    },
+    "Subtract": {
+      "Type": "Pass",
+      "Parameters": {
+        "result.$": "States.MathAdd($.x,States.StringToJson(States.Format('-{}', $.y)))"
+      },
+      "End": true
+    },
+    "Division by zero": {
+      "Type": "Fail"
+    },
+    "Add": {
+      "Type": "Pass",
+      "Parameters": {
+        "result.$": "States.MathAdd($.x, $.y)"
+      },
+      "End": true
+    },
+    "Init *": {
+      "Type": "Pass",
+      "Next": "i = x *",
+      "Parameters": {
+        "x.$": "$.x",
+        "y.$": "$.y",
+        "result": 0,
+        "i": 0
+      }
+    },
+    "Add Y": {
+      "Type": "Pass",
+      "Parameters": {
+        "x.$": "$.x",
+        "y.$": "$.y",
+        "result.$": "States.MathAdd($.result, $.y)",
+        "i.$": "$.i"
+      },
+      "Next": "Add 1 to i *"
+    },
+    "Add 1 to i *": {
+      "Type": "Pass",
+      "Parameters": {
+        "x.$": "$.x",
+        "y.$": "$.y",
+        "result.$": "$.result",
+        "i.$": "States.MathAdd(1,$.i)"
+      },
+      "Next": "i = x *"
+    },
+    "i = x *": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Or": [
+            {
+              "Variable": "$.i",
+              "NumericEqualsPath": "$.x"
+            },
+            {
+              "Variable": "$.y",
+              "NumericEquals": 0
+            }
+          ],
+          "Next": "Multiplication Result"
+        }
+      ],
+      "Default": "Add Y"
+    },
+    "Multiplication Result": {
+      "Type": "Pass",
+      "End": true,
+      "Parameters": {
+        "result.$": "$.result"
+      }
+    }
+  }
+}
